@@ -1,0 +1,3 @@
+# Project exclude paths
+/smart-trader-framework/target/
+/.idea
