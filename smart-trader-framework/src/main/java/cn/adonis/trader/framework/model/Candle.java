@@ -3,13 +3,11 @@ package cn.adonis.trader.framework.model;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-public final class Candle implements Comparable<Candle> {
+public final class Candle extends TimeDataPoint {
 
 	private final BigDecimal open;
-	private final BigDecimal close;
 	private final BigDecimal high;
 	private final BigDecimal low;
-	private final LocalDateTime time;
 
 
 	public static Candle create(BigDecimal open, BigDecimal close, BigDecimal high, BigDecimal low, LocalDateTime time) {
@@ -21,11 +19,10 @@ public final class Candle implements Comparable<Candle> {
 	}
 
 	public Candle(BigDecimal open, BigDecimal close, BigDecimal high, BigDecimal low, LocalDateTime time) {
+		super(close, time);
 		this.open = open;
-		this.close = close;
 		this.high = high;
 		this.low = low;
-		this.time = time;
 	}
 
 	public BigDecimal getOpen() {
@@ -33,7 +30,7 @@ public final class Candle implements Comparable<Candle> {
 	}
 
 	public BigDecimal getClose() {
-		return close;
+		return value;
 	}
 
 	public BigDecimal getHigh() {
@@ -46,11 +43,6 @@ public final class Candle implements Comparable<Candle> {
 
 	public LocalDateTime getTime() {
 		return time;
-	}
-
-	@Override
-	public int compareTo(Candle o) {
-		return this.getTime().compareTo(o.getTime());
 	}
 
 	@Override
@@ -72,5 +64,9 @@ public final class Candle implements Comparable<Candle> {
 
 	public enum Schema {
 		OPEN_PRICE, CLOSE_PRICE, HIGH_PRICE, LOW_PRICE, TIME
+	}
+
+	public Candle modifyTime(LocalDateTime time) {
+		return Candle.create(getOpen(), getClose(), getHigh(), getLow(), time);
 	}
 }

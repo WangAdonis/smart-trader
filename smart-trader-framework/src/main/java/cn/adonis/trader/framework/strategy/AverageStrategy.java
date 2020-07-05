@@ -6,6 +6,7 @@ import cn.adonis.trader.framework.predictor.DoubleLinearRegression;
 import cn.adonis.trader.framework.predictor.TrendPredictor;
 import cn.adonis.trader.framework.model.*;
 import cn.adonis.trader.framework.util.BigDecimalUtil;
+import cn.adonis.trader.framework.util.SeriesUtil;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -25,18 +26,8 @@ public class AverageStrategy extends AbstractFuturesTradingStrategy {
     }
 
     @Override
-    protected Decision makeDecision(Candle candle, TradingContext tradingContext) {
-        // 当前持仓类型
-        VolumeType holdVolumeType = getVolumeType(tradingContext.getHoldVolumes());
-        switch (holdVolumeType) {
-            case EMPTY:
-                return entryDecision(candle, tradingContext);
-            case LONG:
-                return longPositionDecision(candle, tradingContext);
-            case SHORT:
-                return shortPositionDecision(candle, tradingContext);
-        }
-        return Decision.DO_NOTHING;
+    public void preFit(Candle candle, TradingContext tradingContext) {
+        // do nothing
     }
 
     /**
@@ -46,20 +37,21 @@ public class AverageStrategy extends AbstractFuturesTradingStrategy {
      * @param tradingContext
      * @return
      */
-    private Decision entryDecision(Candle candle, TradingContext tradingContext) {
-        Series series = tradingContext.getOriginalData();
+    @Override
+    protected Decision entryDecision(Candle candle, TradingContext tradingContext) {
+        TimeSeries<Candle> series = tradingContext.getOriginalData();
 
         LocalDateTime avgStart = candle.getTime().minusSeconds(parameter.getAvgInterval().toSeconds());
         LocalDateTime avgEnd = candle.getTime().minusSeconds(series.getTimeInterval().toSeconds()); // 均价计算至当前时间点的前一个时间点
-        Series historySeries = tradingContext.getOriginalData().find(avgStart, avgEnd);
+        Series<Candle> historySeries = tradingContext.getOriginalData().getSeries().find(Candle.createFindKey(avgStart), Candle.createFindKey(avgEnd));
         // 计算均价
-        BigDecimal avgPrice = Average.calculate(historySeries, Candle::getClose);
+        BigDecimal avgPrice = Average.calculate(historySeries.getDataList(), Candle::getClose);
 
         LocalDateTime linearRegressionShortStart = candle.getTime().minusSeconds(parameter.getTrendPredictInterval().toSeconds());
         LocalDateTime linearRegressionLongStart = candle.getTime().minusSeconds(parameter.getTrendPredictInterval().toSeconds() * 10);
         LocalDateTime linearRegressionEnd = candle.getTime(); // 趋势预测包含当前时间点
-        Series linearRegressionSeriesShort = tradingContext.getOriginalData().find(linearRegressionShortStart, linearRegressionEnd);
-        Series linearRegressionSeriesLong = tradingContext.getOriginalData().find(linearRegressionLongStart, linearRegressionEnd);
+        Series<Candle> linearRegressionSeriesShort = tradingContext.getOriginalData().getSeries().find(Candle.createFindKey(linearRegressionShortStart), Candle.createFindKey(linearRegressionEnd));
+        Series<Candle> linearRegressionSeriesLong = tradingContext.getOriginalData().getSeries().find(Candle.createFindKey(linearRegressionLongStart), Candle.createFindKey(linearRegressionEnd));
         // 线性回归，判断增长趋势
         TrendPredictor trendPredictor = DoubleLinearRegression.fit(linearRegressionSeriesShort, linearRegressionSeriesLong);
 
@@ -78,6 +70,8 @@ public class AverageStrategy extends AbstractFuturesTradingStrategy {
         return Decision.DO_NOTHING;
     }
 
+
+
     /**
      * 多头策略
      *
@@ -85,7 +79,7 @@ public class AverageStrategy extends AbstractFuturesTradingStrategy {
      * @param tradingContext
      * @return
      */
-    private Decision longPositionDecision(Candle candle, TradingContext tradingContext) {
+    protected Decision longPositionDecision(Candle candle, TradingContext tradingContext) {
 
         Decision entryDecision = entryDecision(candle, tradingContext);
         if (entryDecision.isSell()) {
@@ -114,7 +108,7 @@ public class AverageStrategy extends AbstractFuturesTradingStrategy {
 
         // 止盈：自持有头寸起，如果价格相比于期间最高价下跌超过stopProfit
         Candle entryPoint = tradingContext.getEntryPoint();
-        Optional<Candle> highestPoint = tradingContext.getOriginalData().findHighestClosedPrice(entryPoint.getTime(), candle.getTime());
+        Optional<Candle> highestPoint = SeriesUtil.findHighestClosedPrice(tradingContext.getOriginalData(), entryPoint.getTime(), candle.getTime());
         if (!highestPoint.isPresent()) {
             throw new BackTestException("can not find highest point");
         }
@@ -134,7 +128,7 @@ public class AverageStrategy extends AbstractFuturesTradingStrategy {
      * @param tradingContext
      * @return
      */
-    private Decision shortPositionDecision(Candle candle, TradingContext tradingContext) {
+    protected Decision shortPositionDecision(Candle candle, TradingContext tradingContext) {
 
         Decision entryDecision = entryDecision(candle, tradingContext);
         if (entryDecision.isBuy()) {
@@ -163,7 +157,7 @@ public class AverageStrategy extends AbstractFuturesTradingStrategy {
 
         // 止盈：自持有头寸起，如果价格相比于期间最高价下跌超过stopProfit
         Candle entryPoint = tradingContext.getEntryPoint();
-        Optional<Candle> lowestPoint = tradingContext.getOriginalData().findLowestClosedPrice(entryPoint.getTime(), candle.getTime());
+        Optional<Candle> lowestPoint = SeriesUtil.findLowestClosedPrice(tradingContext.getOriginalData(), entryPoint.getTime(), candle.getTime());
         if (!lowestPoint.isPresent()) {
             throw new BackTestException("can not find lowest point");
         }

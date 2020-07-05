@@ -1,41 +1,57 @@
 package cn.adonis.trader.framework.util;
 
 import cn.adonis.trader.framework.BackTestException;
-import cn.adonis.trader.framework.model.Candle;
-import cn.adonis.trader.framework.model.Series;
-import cn.adonis.trader.framework.model.TimeInterval;
-import com.google.common.collect.Lists;
-import java.util.Collections;
-import java.util.List;
-import java.util.Map;
-import java.util.function.Function;
+import cn.adonis.trader.framework.model.*;
+import org.apache.commons.collections4.CollectionUtils;
+
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.function.BiFunction;
 import java.util.stream.Collectors;
 
 public class SeriesUtil {
 
-    public static Series changeInterval(Series series, TimeInterval timeInterval) {
-        return changeInterval(series, timeInterval, candleList -> {
-            List<Candle> tempList = Lists.newArrayList(candleList);
-            Collections.sort(tempList);
-            return tempList.get(tempList.size() - 1);
-        });
+    public static <T> T getLast(List<T> list) {
+        if (CollectionUtils.isEmpty(list)) {
+            return null;
+        }
+        return list.get(list.size() - 1);
     }
 
-    public static Series changeInterval(Series series, TimeInterval timeInterval, Function<List<Candle>, Candle> mergeFunction) {
-        if (timeInterval.toSeconds() < series.getTimeInterval().toSeconds()) {
-            throw new BackTestException("can not change series interval");
+    public static BiFunction<LocalDateTime, List<Candle>, Candle> MERGE_CANDLE_USE_CLOSED = (time, list) -> {
+        Candle candle = SeriesUtil.getLast(list);
+        if (candle != null) {
+            return candle.modifyTime(time);
+        }
+        return null;
+    };
+
+    public static <T extends TimeDataPoint> TimeSeries<T> changeInterval(TimeSeries<T> timeSeries, TimeInterval timeInterval, BiFunction<LocalDateTime, List<T>, T> mergeFunction) {
+        if (timeInterval.toSeconds() < timeSeries.getTimeInterval().toSeconds()) {
+            throw new BackTestException("can not change timeSeries interval");
+        } else if (timeInterval.toSeconds() == timeSeries.getTimeInterval().toSeconds()) {
+            return timeSeries;
         }
 
-        Map<Long, List<Candle>> candleMap = series.stream()
-                .collect(Collectors.groupingBy(candle -> TimeUtil.toSeconds(candle.getTime()) / timeInterval.toSeconds()));
+        Map<Long, List<T>> candleMap = timeSeries.getSeries().stream()
+                .collect(Collectors.groupingBy(p -> TimeUtil.toSeconds(p.getTime()) / timeInterval.toSeconds()));
 
-        List<Candle> candleList = candleMap.entrySet().stream()
+        List<T> candleList = candleMap.entrySet().stream()
                 .map(entry -> {
                     long period = entry.getKey();
-                    Candle merged = mergeFunction.apply(entry.getValue());
-                    return Candle.create(merged.getOpen(), merged.getClose(), merged.getHigh(), merged.getLow(), TimeUtil.toLocalDateTime(period * timeInterval.toSeconds()));
+                    return mergeFunction.apply(TimeUtil.toLocalDateTime(period * timeInterval.toSeconds()), entry.getValue());
                 }).collect(Collectors.toList());
 
-        return Series.create(candleList, timeInterval);
+        return TimeSeries.create(Series.create(candleList, timeSeries.getSeries().getName()), timeInterval);
+    }
+
+    public static Optional<Candle> findHighestClosedPrice(TimeSeries<Candle> timeSeries, LocalDateTime startTime, LocalDateTime endTime) {
+        Series<Candle> series = timeSeries.getSeries().find(Candle.createFindKey(startTime), Candle.createFindKey(endTime));
+        return series.stream().max(Comparator.comparing(Candle::getClose));
+    }
+
+    public static Optional<Candle> findLowestClosedPrice(TimeSeries<Candle> timeSeries, LocalDateTime startTime, LocalDateTime endTime) {
+        Series<Candle> series = timeSeries.getSeries().find(Candle.createFindKey(startTime), Candle.createFindKey(endTime));
+        return series.stream().min(Comparator.comparing(Candle::getClose));
     }
 }

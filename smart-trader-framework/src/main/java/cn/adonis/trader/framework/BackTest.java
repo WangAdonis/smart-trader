@@ -2,6 +2,7 @@ package cn.adonis.trader.framework;
 
 import cn.adonis.trader.framework.loader.SeriesLoader;
 import cn.adonis.trader.framework.model.*;
+import cn.adonis.trader.framework.strategy.InitializeStrategy;
 import cn.adonis.trader.framework.strategy.TradingStrategy;
 import cn.adonis.trader.framework.util.BigDecimalUtil;
 import com.google.common.collect.Lists;
@@ -33,7 +34,7 @@ public class BackTest {
     public BackTestResult run() throws Exception {
 
         // 1. 加载数据
-        Series originalData = seriesLoader.load();
+        TimeSeries<Candle> originalData = seriesLoader.load();
 
         // 2. 创建tradingContext对象
         TradingContext tradingContext = TradingContext.builder()
@@ -41,9 +42,20 @@ public class BackTest {
                 .setParameter(parameter)
                 .build();
 
-        // 3. 运行策略
-        originalData.find(parameter.getStartTime(), parameter.getEndTime()).stream()
-                .forEach(candle -> tradingStrategy.fit(candle, tradingContext));
+        // 3. 初始化策略
+        if (tradingStrategy instanceof InitializeStrategy) {
+            ((InitializeStrategy) tradingStrategy).init(tradingContext);
+        }
+
+        // 4. 运行策略
+        originalData.getSeries().getDataList()
+                .forEach(candle -> {
+                    if (candle.getTime().isBefore(parameter.getStartTime())) {
+                        tradingStrategy.preFit(candle, tradingContext);
+                    } else {
+                        tradingStrategy.fit(candle, tradingContext);
+                    }
+                });
 
         // 4. 结算
         List<Settlement> settlements = settle(tradingContext);

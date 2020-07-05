@@ -1,10 +1,11 @@
 package cn.adonis.trader.framework.loader;
 
-import cn.adonis.trader.framework.model.Series;
+import cn.adonis.trader.framework.model.Candle;
+import cn.adonis.trader.framework.model.TimeSeries;
 
 
 public interface SeriesLoader {
 
-    Series load() throws Exception;
+    TimeSeries<Candle> load() throws Exception;
 
 }

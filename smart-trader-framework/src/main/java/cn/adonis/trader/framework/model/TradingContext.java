@@ -7,7 +7,7 @@ import java.util.List;
 
 public class TradingContext {
 
-    private final Series originalData;
+    private final TimeSeries<Candle> originalData;
 
     private final BackTestParameter parameter;
 
@@ -17,13 +17,13 @@ public class TradingContext {
 
     private BigDecimal holdVolumes;  // 持有数
 
-    private Candle entryPoint;
+    private Candle entryPoint; // 建仓点
 
     public static Builder builder() {
         return new Builder();
     }
 
-    private TradingContext(Series originalData, BackTestParameter parameter) {
+    private TradingContext(TimeSeries<Candle> originalData, BackTestParameter parameter) {
         this.originalData = originalData;
         this.parameter = parameter;
 
@@ -33,7 +33,7 @@ public class TradingContext {
         this.surplusFunds = parameter.getInitialFunds();
     }
 
-    public Series getOriginalData() {
+    public TimeSeries<Candle> getOriginalData() {
         return originalData;
     }
 
@@ -69,13 +69,12 @@ public class TradingContext {
         return entryPoint;
     }
 
-    public TradingContext setEntryPoint(Candle entryPoint) {
+    public void setEntryPoint(Candle entryPoint) {
         this.entryPoint = entryPoint;
-        return this;
     }
 
     public static class Builder {
-        private Series originalData;
+        private TimeSeries<Candle> originalData;
 
         private BackTestParameter parameter;
 
@@ -83,7 +82,7 @@ public class TradingContext {
             return new TradingContext(this.originalData, this.parameter);
         }
 
-        public Builder setOriginalData(Series originalData) {
+        public Builder setOriginalData(TimeSeries<Candle> originalData) {
             this.originalData = originalData;
             return this;
         }

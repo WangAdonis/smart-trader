@@ -1,5 +1,6 @@
 package cn.adonis.trader.framework.predictor;
 
+import cn.adonis.trader.framework.model.Candle;
 import cn.adonis.trader.framework.model.Series;
 import cn.adonis.trader.framework.util.TimeUtil;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
@@ -18,11 +19,11 @@ public class DoubleLinearRegression implements TrendPredictor {
         this.simpleRegressionLong = simpleRegressionLong;
     }
 
-    public static DoubleLinearRegression fit(Series seriesShort, Series seriesLong) {
+    public static DoubleLinearRegression fit(Series<Candle> seriesShort, Series<Candle> seriesLong) {
         return new DoubleLinearRegression(getSimpleRegression(seriesShort), getSimpleRegression(seriesLong));
     }
 
-    private static SimpleRegression getSimpleRegression(Series series) {
+    private static SimpleRegression getSimpleRegression(Series<Candle> series) {
         SimpleRegression simpleRegression = new SimpleRegression();
         series.stream().forEach(candle -> simpleRegression.addData(TimeUtil.toSeconds(candle.getTime()), candle.getClose().doubleValue()));
         return simpleRegression;

@@ -1,7 +1,6 @@
 package cn.adonis.trader.framework.indicator;
 
 import cn.adonis.trader.framework.model.Candle;
-import cn.adonis.trader.framework.model.Series;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -18,10 +17,6 @@ public class Average {
                 .reduce(BigDecimal::add)
                 .orElse(BigDecimal.ZERO);
         return sum.divide(BigDecimal.valueOf(candleList.size()), 2, BigDecimal.ROUND_HALF_UP);
-    }
-
-    public static BigDecimal calculate(Series series, Function<Candle, BigDecimal> input) {
-        return calculate(series.getCandleList(), input);
     }
 
 

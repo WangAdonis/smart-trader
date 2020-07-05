@@ -4,8 +4,11 @@ import java.util.concurrent.TimeUnit;
 
 public class TimeInterval {
 
-    public final long duration;
-    public final TimeUnit unit;
+    public static final TimeInterval ONE_DAY = TimeInterval.days(1);
+    public static final TimeInterval FIVE_MINUTES = TimeInterval.minutes(5);
+
+    private final long duration;
+    private final TimeUnit unit;
 
     private TimeInterval(long duration, TimeUnit unit) {
         this.duration = duration;
@@ -48,4 +51,24 @@ public class TimeInterval {
         return unit.toSeconds(duration);
     }
 
+    @Override
+    public boolean equals(Object o) {
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
+
+        TimeInterval that = (TimeInterval) o;
+
+        if (duration != that.duration)
+            return false;
+        return unit == that.unit;
+    }
+
+    @Override
+    public int hashCode() {
+        int result = (int) (duration ^ (duration >>> 32));
+        result = 31 * result + (unit != null ? unit.hashCode() : 0);
+        return result;
+    }
 }

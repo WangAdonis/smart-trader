@@ -2,18 +2,23 @@ package cn.adonis.trader.framework;
 
 import cn.adonis.trader.framework.loader.CSVLoader;
 import cn.adonis.trader.framework.loader.SeriesLoader;
-import cn.adonis.trader.framework.model.*;
+import cn.adonis.trader.framework.model.BackTestParameter;
+import cn.adonis.trader.framework.model.BackTestResult;
+import cn.adonis.trader.framework.model.Candle;
+import cn.adonis.trader.framework.model.FuturesTradingFee;
 import cn.adonis.trader.framework.strategy.AverageStrategy;
+import cn.adonis.trader.framework.strategy.StrainerStrategy;
 import cn.adonis.trader.framework.strategy.TradingStrategy;
-import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONObject;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 
 
-public class Main {
+public class StrainerStrategyMain {
 
-    private static final String PATH = "/Users/wangchun3/Desktop/十年国债期货5min数据.csv";
+    private static final String PATH = "/Users/wangchun3/Desktop/t2009-0629.csv";
 
     public static void main(String[] args) throws Exception {
 
@@ -26,25 +31,22 @@ public class Main {
                 .addColumnSchema(Candle.Schema.TIME, CSVLoader.Column.ofTime(2, "yyyy-MM-dd HH:mm"));
 
         //2. 构建回测参数
-        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH");
+        DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         BackTestParameter backTestParameter = BackTestParameter.builder()
-                .setStartTime(LocalDateTime.parse("2020-04-10 00", dateTimeFormatter))
-                .setEndTime(LocalDateTime.parse("2020-05-15 00", dateTimeFormatter))
+                .setStartTime(LocalDateTime.of(LocalDate.parse("2020-03-01", dateTimeFormatter), LocalTime.MIDNIGHT))
+                .setEndTime(LocalDateTime.of(LocalDate.parse("2020-06-15", dateTimeFormatter), LocalTime.MIDNIGHT))
                 .setInitialFunds("5000000")
                 .setTradingFee(FuturesTradingFee.of("10000", "0.02"))
                 .build();
 
         // 3. 构建回测策略
-        AverageStrategy.Parameter parameter = AverageStrategy.Parameter.builder()
-                .setAvgInterval(TimeInterval.days(10))
-                .setTrendPredictInterval(TimeInterval.minutes(10))
-                .setEnterVolumes("5")
-                .setAddInterval("0.15")
-                .setMaxAddTimes(4)
+        StrainerStrategy.Parameter parameter = StrainerStrategy.Parameter.builder()
+                .setTrendPredictPreviousCount(5)
+                .setEnterVolumes("10")
                 .setStopLoss("0.5")
                 .setStopProfit("0.5")
                 .build();
-        TradingStrategy tradingStrategy = AverageStrategy.newAverageStrategy(parameter);
+        TradingStrategy tradingStrategy = StrainerStrategy.newStrainerStrategy(parameter);
 
         // 4. 构建回测系统
         BackTest backTest = BackTest.builder()
@@ -60,12 +62,6 @@ public class Main {
         // 6. 输出回测结果
         String json = result.toEchartsJson();
 
-//        JSONObject jsonObject = JSON.parseObject(json);
-//        System.out.println(jsonObject.getJSONArray("times"));
-//        System.out.println(jsonObject.getJSONArray("prices"));
-//        System.out.println(jsonObject.getJSONArray("volumes"));
-//        System.out.println(jsonObject.getJSONArray("settlements"));
-//        System.out.println(jsonObject.getString("profit"));
         System.out.println("option = " + json + ";");
     }
 }

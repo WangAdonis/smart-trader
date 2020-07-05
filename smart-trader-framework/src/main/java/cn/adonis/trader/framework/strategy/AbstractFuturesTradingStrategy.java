@@ -18,6 +18,10 @@ public abstract class AbstractFuturesTradingStrategy implements TradingStrategy 
 
     @Override
     public void fit(Candle candle, TradingContext tradingContext) {
+
+        // 预处理
+        preFit(candle, tradingContext);
+
         // 决策
         Decision decision = makeDecision(candle, tradingContext);
 
@@ -158,7 +162,25 @@ public abstract class AbstractFuturesTradingStrategy implements TradingStrategy 
         EMPTY;
     }
 
+    protected Decision makeDecision(Candle candle, TradingContext tradingContext) {
+        VolumeType holdVolumeType = getVolumeType(tradingContext.getHoldVolumes());
+        switch (holdVolumeType) {
+            case EMPTY:
+                return entryDecision(candle, tradingContext);
+            case LONG:
+                return longPositionDecision(candle, tradingContext);
+            case SHORT:
+                return shortPositionDecision(candle, tradingContext);
+        }
+        return Decision.DO_NOTHING;
+    }
 
-    protected abstract Decision makeDecision(Candle candle, TradingContext tradingContext);
+    public abstract void preFit(Candle candle, TradingContext tradingContext);
+
+    protected abstract Decision entryDecision(Candle candle, TradingContext tradingContext);
+
+    protected abstract Decision longPositionDecision(Candle candle, TradingContext tradingContext);
+
+    protected abstract Decision shortPositionDecision(Candle candle, TradingContext tradingContext);
 
 }

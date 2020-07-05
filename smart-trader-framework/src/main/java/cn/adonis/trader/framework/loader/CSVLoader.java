@@ -3,6 +3,7 @@ package cn.adonis.trader.framework.loader;
 import cn.adonis.trader.framework.model.Candle;
 import cn.adonis.trader.framework.model.Series;
 import cn.adonis.trader.framework.model.TimeInterval;
+import cn.adonis.trader.framework.model.TimeSeries;
 import com.google.common.collect.Maps;
 import org.apache.commons.lang3.StringUtils;
 
@@ -44,7 +45,7 @@ public class CSVLoader implements SeriesLoader {
 
 
     @Override
-    public Series load() throws IOException {
+    public TimeSeries<Candle> load() throws IOException {
         final int maxColumnIndex = getMaxColumnIndex();
         List<Candle> candleList = Files.lines(Paths.get(path))
                 .filter(StringUtils::isNotBlank)
@@ -61,7 +62,7 @@ public class CSVLoader implements SeriesLoader {
             Duration duration = Duration.between(first.getTime(), second.getTime());
             timeInterval = TimeInterval.millis(duration.toMillis());
         }
-        return Series.create(candleList, timeInterval);
+        return TimeSeries.create(Series.create(candleList, "价格"), timeInterval);
     }
 
     private Candle parseCandle(String[] array) {

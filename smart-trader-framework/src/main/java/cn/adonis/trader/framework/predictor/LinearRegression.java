@@ -1,11 +1,12 @@
 package cn.adonis.trader.framework.predictor;
 
+import cn.adonis.trader.framework.model.CoordinatePoint;
 import cn.adonis.trader.framework.model.Series;
 import cn.adonis.trader.framework.util.TimeUtil;
 import org.apache.commons.math3.stat.regression.SimpleRegression;
 
 import java.time.LocalDateTime;
-import java.time.ZoneOffset;
+import java.util.List;
 
 public class LinearRegression implements TrendPredictor {
 
@@ -15,9 +16,15 @@ public class LinearRegression implements TrendPredictor {
         this.simpleRegression = simpleRegression;
     }
 
-    public static LinearRegression fit(Series series) {
+    public static LinearRegression fit(Series<?> series) {
         SimpleRegression simpleRegression = new SimpleRegression();
-        series.stream().forEach(candle -> simpleRegression.addData(TimeUtil.toSeconds(candle.getTime()), candle.getClose().doubleValue()));
+        series.getDataList().forEach(p -> simpleRegression.addData(p.getX(), p.getY()));
+        return new LinearRegression(simpleRegression);
+    }
+
+    public static LinearRegression fit(List<? extends CoordinatePoint> points) {
+        SimpleRegression simpleRegression = new SimpleRegression();
+        points.forEach(point -> simpleRegression.addData(point.getX(), point.getY()));
         return new LinearRegression(simpleRegression);
     }
 
@@ -28,12 +35,12 @@ public class LinearRegression implements TrendPredictor {
 
     @Override
     public boolean isGoingUp() {
-        return simpleRegression.getSlope() > 0.0001;
+        return simpleRegression.getSlope() > 0;
     }
 
     @Override
     public boolean isGoingDown() {
-        return simpleRegression.getSlope() < -0.0001;
+        return simpleRegression.getSlope() < 0;
     }
 
 

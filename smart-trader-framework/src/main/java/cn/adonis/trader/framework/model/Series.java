@@ -1,113 +1,96 @@
 package cn.adonis.trader.framework.model;
 
 import cn.adonis.trader.framework.BackTestException;
-import cn.adonis.trader.framework.util.TimeUtil;
-
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Stream;
 
-public class Series {
+public class Series<T extends CoordinatePoint> {
 
-    private final List<Candle> candleList;
+    private final List<T> dataList;
 
-    private final TimeInterval timeInterval;
+    private final String name;
 
-    public static Series create(List<Candle> candleList, TimeInterval timeInterval) {
-        return new Series(candleList, timeInterval, true);
+    public static <T extends CoordinatePoint> Series<T> create(List<T> dataList, String name) {
+        return new Series<>(dataList, name, true);
     }
 
-    public static Series createUncheck(List<Candle> candleList, TimeInterval timeInterval) {
-        return new Series(candleList, timeInterval, false);
+    public static <T extends CoordinatePoint> Series<T> createUncheck(List<T> dataList, String name) {
+        return new Series<>(dataList, name, false);
     }
 
-    private Series(List<Candle> candleList, TimeInterval timeInterval, boolean init) {
-        if (candleList == null) {
-            candleList = Collections.emptyList();
+    protected Series(List<T> dataList, String name, boolean needSort) {
+        if (dataList == null) {
+            dataList = Collections.emptyList();
         }
-        candleList = new ArrayList<>(candleList);
-        if (init) {
-            Collections.sort(candleList);
-            check(candleList);
+        dataList = new ArrayList<>(dataList);
+        if (needSort) {
+            Collections.sort(dataList);
+            check(dataList);
         }
-        this.candleList = Collections.unmodifiableList(candleList);
-        this.timeInterval = timeInterval;
+        this.dataList = Collections.unmodifiableList(dataList);
+        this.name = name;
     }
 
     /**
      * 截取Series
-     * @param startTime >=
-     * @param endTime <=
+     * @param startX >=
+     * @param endX <=
      * @return
      */
-    public Series find(LocalDateTime startTime, LocalDateTime endTime) {
+    public Series<T> find(T startX, T endX) {
         int start = 0;
-        if (startTime != null) {
-            start = Collections.binarySearch(candleList, Candle.createFindKey(startTime));
+        if (startX != null) {
+            start = Collections.binarySearch(dataList, startX);
             start = start >= 0 ? start : Math.abs(start + 1);
         }
 
-        int end = candleList.size();
-        if (endTime != null) {
-            end = Collections.binarySearch(candleList, Candle.createFindKey(endTime));
+        int end = dataList.size();
+        if (endX != null) {
+            end = Collections.binarySearch(dataList, endX);
             end = end >= 0 ? end + 1 : Math.abs(end + 1);
         }
 
-        return createUncheck(candleList.subList(start, end), timeInterval);
-    }
-
-    public int findCandle(Candle candle) {
-        return Collections.binarySearch(candleList, Candle.createFindKey(TimeUtil.alignByInterval(candle.getTime(), timeInterval)));
+        return createUncheck(dataList.subList(start, end), name);
     }
 
     /**
      * 截取Series
-     * @param currentCandle 当前candle
-     * @param beforeCount 向前追溯n个candle(不包括当前candle在内)
+     * @param point 当前点
+     * @param beforeCount 向前追溯n个点(不包括当前点在内)
      * @return
      */
-    public Series subSeries(Candle currentCandle, int beforeCount) {
-        int index = findCandle(currentCandle);
+    public Series<T> subSeries(T point, int beforeCount) {
+        int index = Collections.binarySearch(dataList, point);
         if (index < 0) {
-            throw new BackTestException("can not find candle index");
+            throw new BackTestException("can not find point index");
         }
         int startIndex = index - beforeCount;
         if (startIndex < 0) {
-            throw new BackTestException("can not subSeries");
+            return createUncheck(Collections.emptyList(), name);
         }
-        return createUncheck(candleList.subList(startIndex, index), timeInterval);
-    }
-
-    public Optional<Candle> findHighestClosedPrice(LocalDateTime startTime, LocalDateTime endTime) {
-        Series series = find(startTime, endTime);
-        return series.stream().max(Comparator.comparing(Candle::getClose));
-    }
-
-    public Optional<Candle> findLowestClosedPrice(LocalDateTime startTime, LocalDateTime endTime) {
-        Series series = find(startTime, endTime);
-        return series.stream().min(Comparator.comparing(Candle::getClose));
+        return createUncheck(dataList.subList(startIndex, index), name);
     }
 
     public int size() {
-        return candleList.size();
+        return dataList.size();
     }
 
-    public Stream<Candle> stream() {
-        return candleList.stream();
+    public Stream<T> stream() {
+        return dataList.stream();
     }
 
-    private void check(List<Candle> candleList) {
-        Set<Candle> candles = new HashSet<>(candleList);
-        if (candles.size() != candleList.size()) {
-            throw new BackTestException("candleList has duplicate datetime candle");
+    private void check(List<T> dataList) {
+        Set<T> dataSet = new HashSet<>(dataList);
+        if (dataSet.size() != dataList.size()) {
+            throw new BackTestException("dataList has duplicate x point");
         }
     }
 
-    public List<Candle> getCandleList() {
-        return candleList;
+    public List<T> getDataList() {
+        return dataList;
     }
 
-    public TimeInterval getTimeInterval() {
-        return timeInterval;
+    public String getName() {
+        return name;
     }
 }

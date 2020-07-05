@@ -18,7 +18,7 @@ public class BackTestResult {
 
     private BigDecimal profit;
     private List<Transaction> transactions;
-    private Series originalData;
+    private TimeSeries<Candle> originalData;
     private List<Settlement> settlements;
 
     public BigDecimal getProfit() {
@@ -37,11 +37,11 @@ public class BackTestResult {
         this.transactions = transactions;
     }
 
-    public Series getOriginalData() {
+    public TimeSeries<Candle> getOriginalData() {
         return originalData;
     }
 
-    public void setOriginalData(Series originalData) {
+    public void setOriginalData(TimeSeries<Candle> originalData) {
         this.originalData = originalData;
     }
 
@@ -54,14 +54,14 @@ public class BackTestResult {
     }
 
     public String toEchartsJson() {
-        List<String> timeStrList = originalData.stream().map(c -> c.getTime().format(DateTimeFormatter.ofPattern("MM-dd HH:mm"))).collect(Collectors.toList());
-        List<String> priceStrList = originalData.stream().map(Candle::getClose).map(b -> b.setScale(2, RoundingMode.HALF_UP)).map(b -> b.stripTrailingZeros().toPlainString()).collect(Collectors.toList());
+        List<String> timeStrList = originalData.getSeries().stream().map(c -> c.getTime().format(DateTimeFormatter.ofPattern("MM-dd HH:mm"))).collect(Collectors.toList());
+        List<String> priceStrList = originalData.getSeries().stream().map(Candle::getClose).map(b -> b.setScale(2, RoundingMode.HALF_UP)).map(b -> b.stripTrailingZeros().toPlainString()).collect(Collectors.toList());
         Map<LocalDateTime, Transaction> timeTransactionMap = transactions.stream().collect(Collectors.toMap(Transaction::getTime, t -> t));
 
         // 持仓对齐
         BigDecimal holdVolume = BigDecimal.ZERO;
-        List<String> holdVolumeStrList = Lists.newArrayListWithCapacity(originalData.size());
-        for (Candle candle : originalData.getCandleList()) {
+        List<String> holdVolumeStrList = Lists.newArrayListWithCapacity(originalData.getSeries().size());
+        for (Candle candle : originalData.getSeries().getDataList()) {
             Transaction transaction = timeTransactionMap.get(candle.getTime());
             if (transaction != null) {
                 holdVolume = holdVolume.add(transaction.getVolume());
@@ -73,7 +73,7 @@ public class BackTestResult {
         BigDecimal profit = BigDecimal.ZERO;
         List<String> settlementStrList = Lists.newArrayListWithCapacity(settlements.size());
         Map<LocalDateTime, Settlement> timeSettlementMap = settlements.stream().collect(Collectors.toMap(Settlement::getTime, s -> s));
-        for (Candle candle : originalData.getCandleList()) {
+        for (Candle candle : originalData.getSeries().getDataList()) {
             Settlement settlement = timeSettlementMap.get(candle.getTime());
             if (settlement != null) {
                 profit = profit.add(settlement.getProfit());
@@ -94,11 +94,8 @@ public class BackTestResult {
         ((JSONObject) series.get(0)).put("data", priceStrList);
         ((JSONObject) series.get(1)).put("data", holdVolumeStrList);
         ((JSONObject) series.get(2)).put("data", settlementStrList);
-//        results.put("times", timesArray);
-//        results.put("prices", priceArray);
-//        results.put("settlements", settlementArray);
-//        results.put("volumes", holdVolumeArray);
-//        results.put("profit", profit.setScale(2, RoundingMode.HALF_UP).stripTrailingZeros().toPlainString());
+
+        //
 
         return results.toJSONString();
     }
