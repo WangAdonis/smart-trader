@@ -2,18 +2,14 @@ package cn.adonis.trader.framework;
 
 import cn.adonis.trader.framework.loader.CSVLoader;
 import cn.adonis.trader.framework.loader.SeriesLoader;
-import cn.adonis.trader.framework.model.BackTestParameter;
-import cn.adonis.trader.framework.model.BackTestResult;
-import cn.adonis.trader.framework.model.Candle;
-import cn.adonis.trader.framework.model.FuturesTradingFee;
-import cn.adonis.trader.framework.strategy.AverageStrategy;
+import cn.adonis.trader.framework.model.*;
 import cn.adonis.trader.framework.strategy.StrainerStrategy;
-import cn.adonis.trader.framework.strategy.TradingStrategy;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
 
 
 public class StrainerStrategyMain {
@@ -46,18 +42,20 @@ public class StrainerStrategyMain {
                 .setStopLoss("0.5")
                 .setStopProfit("0.5")
                 .build();
-        TradingStrategy tradingStrategy = StrainerStrategy.newStrainerStrategy(parameter);
+        StrainerStrategy strainerStrategy = StrainerStrategy.newStrainerStrategy(parameter);
 
         // 4. 构建回测系统
         BackTest backTest = BackTest.builder()
                 .setSeriesLoader(seriesLoader)
                 .setParameter(backTestParameter)
-                .setTradingStrategy(tradingStrategy)
+                .setTradingStrategy(strainerStrategy)
                 .build();
 
         // 5. 执行回测
         BackTestResult result = backTest.run();
-
+        TimeSeries<TimeDataPoint> dailyMa20 = TimeSeries.create(Series.create(strainerStrategy.getDailyMa20().getDataList(), "日线ma20"), TimeInterval.minutes(5));
+        TimeSeries<TimeDataPoint> fiveMinutesMa60 = TimeSeries.create(Series.create(strainerStrategy.getFiveMinutesMa60().getDataList(), "5分钟线ma60"), TimeInterval.minutes(5));
+        result.setExtTimeSeries(Arrays.asList(dailyMa20, fiveMinutesMa60));
 
         // 6. 输出回测结果
         String json = result.toEchartsJson();

@@ -3,6 +3,7 @@ package cn.adonis.trader.framework.model;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.google.common.collect.Lists;
+import org.apache.commons.collections4.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -20,6 +21,7 @@ public class BackTestResult {
     private List<Transaction> transactions;
     private TimeSeries<Candle> originalData;
     private List<Settlement> settlements;
+    private List<TimeSeries<?>> extTimeSeries;
 
     public BigDecimal getProfit() {
         return profit;
@@ -53,9 +55,20 @@ public class BackTestResult {
         this.settlements = settlements;
     }
 
+    public List<TimeSeries<?>> getExtTimeSeries() {
+        return extTimeSeries;
+    }
+
+    public BackTestResult setExtTimeSeries(List<TimeSeries<?>> extTimeSeries) {
+        this.extTimeSeries = extTimeSeries;
+        return this;
+    }
+
     public String toEchartsJson() {
         List<String> timeStrList = originalData.getSeries().stream().map(c -> c.getTime().format(DateTimeFormatter.ofPattern("MM-dd HH:mm"))).collect(Collectors.toList());
         List<String> priceStrList = originalData.getSeries().stream().map(Candle::getClose).map(b -> b.setScale(2, RoundingMode.HALF_UP)).map(b -> b.stripTrailingZeros().toPlainString()).collect(Collectors.toList());
+        BigDecimal high = originalData.getSeries().stream().map(Candle::getClose).max(BigDecimal::compareTo).get();
+        BigDecimal low = originalData.getSeries().stream().map(Candle::getClose).min(BigDecimal::compareTo).get();
         Map<LocalDateTime, Transaction> timeTransactionMap = transactions.stream().collect(Collectors.toMap(Transaction::getTime, t -> t));
 
         // 持仓对齐
@@ -89,11 +102,28 @@ public class BackTestResult {
         ((JSONObject) xAxis.get(0)).put("data", timeStrList);
         ((JSONObject) xAxis.get(1)).put("data", timeStrList);
 
+        // 设置y轴最大最小值
+        JSONArray yAxis = results.getJSONArray("yAxis");
+        ((JSONObject) yAxis.get(0)).put("min", low.subtract(BigDecimal.ONE).intValue());
+        ((JSONObject) yAxis.get(0)).put("max", high.add(BigDecimal.ONE).intValue());
+        ((JSONObject) yAxis.get(0)).put("data", timeStrList);
+
         // 拼装曲线参数
         JSONArray series = results.getJSONArray("series");
         ((JSONObject) series.get(0)).put("data", priceStrList);
         ((JSONObject) series.get(1)).put("data", holdVolumeStrList);
         ((JSONObject) series.get(2)).put("data", settlementStrList);
+
+        if (CollectionUtils.isNotEmpty(extTimeSeries)) {
+            for (TimeSeries<?> timeSeries : extTimeSeries) {
+                JSONObject seriesConfig = new JSONObject();
+                seriesConfig.put("name", timeSeries.getSeries().getName());
+                seriesConfig.put("type", "line");
+                List<String> dataStrList = timeSeries.getSeries().stream().map(TimeDataPoint::getValue).map(b -> b.setScale(2, RoundingMode.HALF_UP)).map(b -> b.stripTrailingZeros().toPlainString()).collect(Collectors.toList());
+                seriesConfig.put("data", dataStrList);
+                series.add(seriesConfig);
+            }
+        }
 
         //
 

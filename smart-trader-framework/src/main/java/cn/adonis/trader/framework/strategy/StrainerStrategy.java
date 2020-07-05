@@ -122,6 +122,14 @@ public class StrainerStrategy extends AbstractFuturesTradingStrategy implements 
         this.fiveMinutesMa60 = MovingAverage.create(tradingContext.getOriginalData(), MovingAverage.Type.of(60, TimeInterval.FIVE_MINUTES));
     }
 
+    public MovingAverage getDailyMa20() {
+        return dailyMa20;
+    }
+
+    public MovingAverage getFiveMinutesMa60() {
+        return fiveMinutesMa60;
+    }
+
     public static class Parameter {
 
         private final int trendPredictPreviousCount;

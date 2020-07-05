@@ -1,6 +1,8 @@
 package cn.adonis.trader.framework.model;
 
 import cn.adonis.trader.framework.BackTestException;
+import com.google.common.collect.Lists;
+
 import java.util.*;
 import java.util.stream.Stream;
 
@@ -10,8 +12,8 @@ public class Series<T extends CoordinatePoint> {
 
     private final String name;
 
-    public static <T extends CoordinatePoint> Series<T> create(List<T> dataList, String name) {
-        return new Series<>(dataList, name, true);
+    public static <T extends CoordinatePoint> Series<T> create(Collection<T> dataList, String name) {
+        return new Series<>(Lists.newArrayList(dataList), name, true);
     }
 
     public static <T extends CoordinatePoint> Series<T> createUncheck(List<T> dataList, String name) {
